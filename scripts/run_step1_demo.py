@@ -1,6 +1,7 @@
 from optirouteai.data.generator import generate_cvrp_instance
 from optirouteai.optimization.constraints import check_solution_feasibility
 from optirouteai.optimization.distance import route_distance, solution_distance
+from optirouteai.optimization.heuristics import capacity_aware_nearest_neighbor
 
 
 def main():
@@ -11,15 +12,11 @@ def main():
         seed=42,
     )
 
-    print("=== OptiRouteAI Step 2 Demo ===")
+    print("=== OptiRouteAI Step 3 Demo ===")
     print()
 
     print("Depot:")
     print(instance.depot)
-    print()
-
-    print("Customers:")
-    print(instance.customers)
     print()
 
     print("Demands:")
@@ -34,27 +31,26 @@ def main():
     print(instance.vehicle_capacity)
     print()
 
-    # Temporary manually created routes.
-    # Customer indices are 0-based.
-    routes = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8, 9],
-    ]
+    routes = capacity_aware_nearest_neighbor(instance)
 
-    print("Routes:")
+    print("Generated routes:")
     print(routes)
     print()
 
     for vehicle_id, route in enumerate(routes, start=1):
         distance = route_distance(route, instance)
-        print(f"Vehicle {vehicle_id} route distance: {distance:.4f}")
+        load = sum(instance.demands[idx] for idx in route)
 
-    print()
+        print(f"Vehicle {vehicle_id}")
+        print(f"  Route: {route}")
+        print(f"  Load: {load}/{instance.vehicle_capacity}")
+        print(f"  Distance: {distance:.4f}")
+        print()
+
     total_distance = solution_distance(routes, instance)
     print(f"Total solution distance: {total_distance:.4f}")
-
     print()
+
     report = check_solution_feasibility(routes, instance)
 
     print("Feasibility report:")

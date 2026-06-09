@@ -2,33 +2,24 @@ from optirouteai.data.generator import generate_cvrp_instance
 from optirouteai.optimization.constraints import check_solution_feasibility
 from optirouteai.optimization.distance import route_distance, solution_distance
 from optirouteai.optimization.heuristics import capacity_aware_nearest_neighbor
+from optirouteai.visualization.plot_routes import plot_routes
 
 
 def main():
     instance = generate_cvrp_instance(
-        num_customers=10,
-        num_vehicles=3,
-        vehicle_capacity=30,
+        num_customers=20,
+        num_vehicles=4,
+        vehicle_capacity=35,
         seed=42,
     )
 
-    print("=== OptiRouteAI Step 3 Demo ===")
+    print("=== OptiRouteAI Step 4 Demo ===")
     print()
 
-    print("Depot:")
-    print(instance.depot)
-    print()
-
-    print("Demands:")
-    print(instance.demands)
-    print()
-
-    print("Number of vehicles:")
-    print(instance.num_vehicles)
-    print()
-
-    print("Vehicle capacity:")
-    print(instance.vehicle_capacity)
+    print("Number of customers:", len(instance.customers))
+    print("Number of vehicles:", instance.num_vehicles)
+    print("Vehicle capacity:", instance.vehicle_capacity)
+    print("Total demand:", instance.demands.sum())
     print()
 
     routes = capacity_aware_nearest_neighbor(instance)
@@ -61,6 +52,13 @@ def main():
     print(f"Duplicate visits: {report.num_duplicate_visits}")
     print(f"Capacity violations: {report.num_capacity_violations}")
     print(f"Route loads: {report.route_loads}")
+
+    plot_routes(
+        instance=instance,
+        routes=routes,
+        title="Capacity-Aware Nearest Neighbor Solution",
+        save_path="reports/figures/step4_nearest_neighbor_routes.png",
+    )
 
 
 if __name__ == "__main__":

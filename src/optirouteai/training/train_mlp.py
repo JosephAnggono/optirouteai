@@ -9,18 +9,10 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from optirouteai.models.mlp_policy import MLPPolicy
+from optirouteai.utils.routing_features import ENHANCED_FEATURE_COLUMNS
 
 
-FEATURE_COLUMNS = [
-    "dx",
-    "dy",
-    "distance_to_current",
-    "customer_demand",
-    "remaining_capacity",
-    "demand_capacity_ratio",
-    "remaining_capacity_after",
-    "num_unvisited",
-]
+FEATURE_COLUMNS = ENHANCED_FEATURE_COLUMNS
 
 
 def load_imitation_dataset(path: str) -> pd.DataFrame:

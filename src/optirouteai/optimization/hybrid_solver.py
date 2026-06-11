@@ -8,7 +8,7 @@ from optirouteai.optimization.constraints import check_solution_feasibility
 from optirouteai.optimization.distance import euclidean_distance, solution_distance
 from optirouteai.optimization.neural_solver import MLPNeuralSolver
 from optirouteai.optimization.ortools_solver import SolverResult
-
+from optirouteai.utils.routing_features import build_candidate_features
 
 class HybridNeuralSolver:
     """
@@ -75,35 +75,18 @@ class HybridNeuralSolver:
                 if not feasible_candidates:
                     break
 
-                feature_rows = []
+                route_load_used = instance.vehicle_capacity - remaining_capacity
 
-                for customer_idx in feasible_candidates:
-                    customer_point = instance.customers[customer_idx]
-                    customer_demand = int(instance.demands[customer_idx])
-                    distance_to_current = euclidean_distance(
-                        current_point,
-                        customer_point,
-                    )
-
-                    feature_rows.append(
-                        {
-                            "customer_idx": customer_idx,
-                            "dx": float(customer_point[0] - current_point[0]),
-                            "dy": float(customer_point[1] - current_point[1]),
-                            "distance_to_current": float(distance_to_current),
-                            "customer_demand": customer_demand,
-                            "remaining_capacity": int(remaining_capacity),
-                            "demand_capacity_ratio": float(
-                                customer_demand / remaining_capacity
-                            ),
-                            "remaining_capacity_after": int(
-                                remaining_capacity - customer_demand
-                            ),
-                            "num_unvisited": len(unvisited),
-                        }
-                    )
-
-                features_df = pd.DataFrame(feature_rows)
+                features_df = build_candidate_features(
+                    instance=instance,
+                    current_point=current_point,
+                    feasible_candidates=feasible_candidates,
+                    unvisited=unvisited,
+                    remaining_capacity=remaining_capacity,
+                    vehicle_id=len(routes),
+                    route_position=len(route),
+                    route_load_used=route_load_used,
+                )
 
                 mlp_scores = self.neural_solver.score_candidates(features_df)
                 distance_scores = self.compute_distance_scores(features_df)

@@ -6,6 +6,7 @@ from tqdm import tqdm
 from optirouteai.data.generator import CVRPInstance, generate_cvrp_instance
 from optirouteai.optimization.distance import euclidean_distance
 from optirouteai.optimization.ortools_solver import solve_cvrp_with_ortools
+from optirouteai.utils.routing_features import build_candidate_features
 
 
 def build_imitation_examples_from_solution(
@@ -15,29 +16,17 @@ def build_imitation_examples_from_solution(
     solver_name: str = "OR-Tools",
 ) -> pd.DataFrame:
     """
-    Convert a solved CVRP route into supervised imitation learning examples.
+    Convert solved CVRP routes into supervised imitation learning examples.
 
-    Each row represents one candidate customer at one decision step.
-
-    Label:
-        1 = candidate customer was selected by OR-Tools
-        0 = candidate customer was not selected
-
-    Args:
-        instance: CVRP instance.
-        routes: OR-Tools routes.
-        instance_id: ID of the generated instance.
-        solver_name: Name of the solver used as teacher.
-
-    Returns:
-        DataFrame of imitation learning examples.
+    Each row represents one feasible candidate customer at one decision step.
     """
-    rows = []
+    all_rows = []
     unvisited = set(range(len(instance.customers)))
 
     for vehicle_id, route in enumerate(routes):
         current_point = instance.depot
         remaining_capacity = instance.vehicle_capacity
+        route_load_used = 0
 
         for route_position, selected_customer in enumerate(route):
             feasible_candidates = sorted(
@@ -48,56 +37,42 @@ def build_imitation_examples_from_solution(
                 ]
             )
 
-            # If the selected customer is not feasible, skip this decision.
-            # This should not happen for a valid OR-Tools solution.
             if selected_customer not in feasible_candidates:
                 continue
 
             decision_id = f"{instance_id}_{vehicle_id}_{route_position}"
 
-            for candidate_customer in feasible_candidates:
-                customer_point = instance.customers[candidate_customer]
-                customer_demand = int(instance.demands[candidate_customer])
-                distance_to_current = euclidean_distance(
-                    current_point,
-                    customer_point,
-                )
+            features_df = build_candidate_features(
+                instance=instance,
+                current_point=current_point,
+                feasible_candidates=feasible_candidates,
+                unvisited=unvisited,
+                remaining_capacity=remaining_capacity,
+                vehicle_id=vehicle_id,
+                route_position=route_position,
+                route_load_used=route_load_used,
+            )
 
-                rows.append(
-                    {
-                        "instance_id": instance_id,
-                        "decision_id": decision_id,
-                        "teacher_solver": solver_name,
-                        "vehicle_id": vehicle_id,
-                        "route_position": route_position,
-                        "current_x": float(current_point[0]),
-                        "current_y": float(current_point[1]),
-                        "customer_idx": candidate_customer,
-                        "customer_x": float(customer_point[0]),
-                        "customer_y": float(customer_point[1]),
-                        "dx": float(customer_point[0] - current_point[0]),
-                        "dy": float(customer_point[1] - current_point[1]),
-                        "distance_to_current": float(distance_to_current),
-                        "customer_demand": customer_demand,
-                        "remaining_capacity": int(remaining_capacity),
-                        "demand_capacity_ratio": float(
-                            customer_demand / remaining_capacity
-                        ),
-                        "remaining_capacity_after": int(
-                            remaining_capacity - customer_demand
-                        ),
-                        "num_unvisited": len(unvisited),
-                        "selected_customer_idx": selected_customer,
-                        "label": int(candidate_customer == selected_customer),
-                    }
-                )
+            features_df["instance_id"] = instance_id
+            features_df["decision_id"] = decision_id
+            features_df["teacher_solver"] = solver_name
+            features_df["selected_customer_idx"] = selected_customer
+            features_df["label"] = (
+                features_df["customer_idx"] == selected_customer
+            ).astype(int)
+
+            all_rows.append(features_df)
 
             unvisited.remove(selected_customer)
-            remaining_capacity -= int(instance.demands[selected_customer])
+            selected_demand = int(instance.demands[selected_customer])
+            remaining_capacity -= selected_demand
+            route_load_used += selected_demand
             current_point = instance.customers[selected_customer]
 
-    return pd.DataFrame(rows)
+    if not all_rows:
+        return pd.DataFrame()
 
+    return pd.concat(all_rows, ignore_index=True)
 
 def generate_imitation_dataset(
     num_instances: int = 20,

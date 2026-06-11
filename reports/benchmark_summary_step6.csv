@@ -1,0 +1,3 @@
+solver_name,num_runs,avg_distance,median_distance,avg_runtime_seconds,median_runtime_seconds,feasibility_rate,avg_gap_vs_ortools_percent,median_gap_vs_ortools_percent
+Nearest Neighbor,20,7.41650855214876,7.53888188035458,0.0012815349939046428,0.0008483499987050891,100.0,28.721739213042923,28.170055927041645
+OR-Tools,20,5.7806394373516135,5.801238227656135,1.005469325001468,1.0032381000055466,100.0,0.0,0.0
